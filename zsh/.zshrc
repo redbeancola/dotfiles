@@ -36,6 +36,8 @@ alias pag="ps aux | grep"
 alias sc="xclip -selection clipboard"
 export STEAMGAMES="$HOME/.local/share/Steam/steamapps/common"
 alias fn="find . -type f | fzf --preview 'cat {}' --ignore-case | grep -v '^$' | xargs -r nvim"
+
+alias mcd="mkdir -p \"\$1\" && cd \"\$1\""
 alias f="find . -type f | fzf --preview 'cat {}' --ignore-case | grep -v '^$' | xargs -r"
 alias fp="ps aux | fzf | awk '{print $2}' | xargs kill"
 export PATH="$HOME/.local/bin:$PATH"

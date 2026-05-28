@@ -1,5 +1,7 @@
 -- helpers/updater/init.lua
 -- Entry point: `require("helpers.updater")`.
+-- Wires together config, state, runner, popup, the periodic timer,
+-- and the lxpolkit/pkexec window-placement rule.
 
 local gears  = require("gears")
 local ruled  = require("ruled")

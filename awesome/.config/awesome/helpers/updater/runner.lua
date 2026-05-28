@@ -1,19 +1,30 @@
--- helpers/updates/runner.lua
+-- helpers/updater/runner.lua
 -- Manages launching / cancelling the pacman PTY wrapper process,
 -- parsing its output, and responding to Y/n prompts.
+--
+-- Cancel design note
+-- ------------------
+-- pacman runs as root (pkexec setuid). User-space signals cannot reach it
+-- (EPERM). The wrapper kills it by closing the PTY master fd, which causes
+-- the kernel to send SIGHUP to the slave foreground process group —
+-- a privilege-free kernel mechanism.
+--
+-- We trigger this by sending SIGTERM to the wrapper (user-owned), whose
+-- signal handler closes the master and exits. The wrapper's true PID is
+-- read from PID_FILE rather than trusting awful.spawn's return value, which
+-- may be an intermediate shell or GLib handle.
 
 local awful   = require("awful")
 local gears   = require("gears")
 local naughty = require("naughty")
 
-local cfg    = require("helpers.updates.config")
-local state  = require("helpers.updates.state")
-local status = require("helpers.updates.status")
+local cfg    = require("helpers.updater.config")
+local state  = require("helpers.updater.state")
+local status = require("helpers.updater.status")
 
 local M = {}
 
 -- ── Noise filter ──────────────────────────────────────────────────────────────
--- ksshaskpass/Qt/Wayland noise leaks onto the PTY slave (merged fds).
 local NOISE_PATTERNS = {
     "Failed to create wl_display",
     "qt%.qpa%.plugin",
@@ -30,19 +41,17 @@ end
 
 -- ── Output parsing ────────────────────────────────────────────────────────────
 local function parse_stdout(line)
-    -- Track current package name from download headers.
     local pkg = line:match("([%w%-_:%.]+%-x86_64)")
              or line:match("([%w%-_:%.]+%-any)")
     if pkg then state.current_package = pkg end
 
-    -- Condense repetitive download-progress lines into one summary line.
     local cur, total, size, unit, pct =
         line:match(
             "Total%s*%(%s*(%d+)%s*/%s*(%d+)%)%s+"
             .. "([%d%.]+)%s*(%a+)%s+[%d%.]+%s*%a+/s"
             .. "%s+%S+%s+%[.-%]%s*(%d+)%%")
 
-    state.percent = pct  -- may be nil between progress ticks; that's fine
+    state.percent = pct
 
     if cur then
         local summary = string.format(
@@ -50,10 +59,9 @@ local function parse_stdout(line)
             state.current_package, cur, total, size, unit, pct)
         state.output = state.output:gsub("\nDownloading: [^\n]+$", "")
         state.output = state.output .. "\n" .. summary
-        return  -- don't fall through to the generic append
+        return
     end
 
-    -- Skip raw progress/header lines; keep everything else.
     local is_progress = line:match("%a+/s") or line:match("%d+%%")
     local is_pkg_hdr  = line:match("%-x86_64") or line:match("%-any")
     if not is_progress and not is_pkg_hdr then
@@ -82,8 +90,6 @@ local function on_stdout(line)
 
     if line:match("%[[Yy]/[Nn]%]") then
         state.pending_prompt = true
-        -- Delegate button creation to popup.lua via a signal so runner.lua
-        -- does not need to depend on popup.lua (avoids circular require).
         awesome.emit_signal("updater::prompt_needed")
     end
 end
@@ -95,17 +101,22 @@ local function on_stderr(line)
 end
 
 local function on_exit(_, code)
-    state.running       = false
+    state.running        = false
     state.pending_prompt = false
-    state.pid           = nil
 
     awful.spawn.with_shell(
         "fuser -k " .. cfg.INPUT_FIFO ..
-        " 2>/dev/null; rm -f " .. cfg.INPUT_FIFO)
+        " 2>/dev/null; rm -f " .. cfg.INPUT_FIFO ..
+        " " .. cfg.PID_FILE)
 
     awesome.emit_signal("updater::prompt_hide")
 
-    if code == 0 then
+    -- 143 = 128+SIGTERM: cancelled by user, not an error
+    local cancelled = (code == 143 or code == -15)
+
+    if cancelled then
+        state.output = state.output .. "\nCancelled."
+    elseif code == 0 then
         state.output = state.output .. "\nDone!"
         state.count  = 0
         naughty.notify({
@@ -132,7 +143,6 @@ end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
 
---- Start a full system update. No-op if one is already running.
 function M.start()
     if state.running then return end
 
@@ -146,38 +156,47 @@ function M.start()
     status.refresh()
 
     awful.spawn.easy_async_with_shell(
-        "rm -f " .. cfg.INPUT_FIFO .. " && mkfifo " .. cfg.INPUT_FIFO,
+        "rm -f " .. cfg.INPUT_FIFO .. " " .. cfg.PID_FILE ..
+        " && mkfifo " .. cfg.INPUT_FIFO,
         function()
-            -- Keep the FIFO open so writers never get SIGPIPE.
             awful.spawn.with_shell("sleep 86400 <>" .. cfg.INPUT_FIFO .. " &")
 
-            -- setsid puts the wrapper (and every child it spawns, including
-            -- pkexec + pacman) into a new process group whose PGID equals the
-            -- wrapper's PID.  Killing -PGID later reaches all of them.
-            state.pid = awful.spawn.with_line_callback(
-                { "setsid", "python3", cfg.WRAPPER_PATH },
+            -- The PID returned here is NOT used for cancellation —
+            -- the wrapper writes its own PID to PID_FILE at startup.
+            awful.spawn.with_line_callback(
+                { "python3", cfg.WRAPPER_PATH },
                 { stdout = on_stdout, stderr = on_stderr, exit = on_exit }
             )
         end)
 end
 
---- Cancel a running update.
--- Sends SIGTERM to the entire process group (wrapper + pkexec + pacman).
 function M.cancel()
-    if not state.pid then return end
+    if not state.running then return end
 
-    -- PGID == PID because we launched with setsid.
-    -- The negative sign tells kill(1) to target the group.
-    awful.spawn.with_shell("kill -TERM -" .. state.pid .. " 2>/dev/null")
-
+    -- Optimistically update the UI immediately.
     state.running = false
-    state.pid     = nil
-    state.output  = state.output .. "\nCancelled."
+    state.output  = state.output .. "\nCancelling..."
     status.refresh()
+    awesome.emit_signal("updater::prompt_hide")
+
+    -- Send SIGTERM to the wrapper (user-owned, so this always works).
+    -- The wrapper's SIGTERM handler closes the PTY master fd.
+    -- The kernel then sends SIGHUP to pacman's controlling terminal group.
+    -- pacman dies even though it runs as root. on_exit() fires normally.
+    awful.spawn.easy_async_with_shell(
+        "cat " .. cfg.PID_FILE .. " 2>/dev/null",
+        function(pid_str)
+            local pid = pid_str and pid_str:match("(%d+)")
+            if pid then
+                awful.spawn.with_shell("kill -TERM " .. pid)
+            else
+                -- Fallback: wrapper crashed before writing PID file.
+                awful.spawn.with_shell(
+                    "pkill -TERM -f pacman_pty_wrapper.py 2>/dev/null")
+            end
+        end)
 end
 
---- Send a Y/n answer to the running process.
----@param answer string  "y" or "n"
 function M.answer_prompt(answer)
     awful.spawn.with_shell(
         string.format("printf '%s\\n' >%s", answer, cfg.INPUT_FIFO))
@@ -185,7 +204,6 @@ function M.answer_prompt(answer)
     awesome.emit_signal("updater::prompt_hide")
 end
 
---- Periodic availability check (called by the timer in init.lua).
 function M.check()
     awful.spawn.easy_async_with_shell(
         "checkupdates 2>/dev/null | wc -l",

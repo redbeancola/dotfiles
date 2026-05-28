@@ -157,7 +157,6 @@ require('packer').startup(function(use)
         window = {
           width = 30,
           mappings = {
-            ["l"] = "edit",
             ["<leader>p"] = "image_wezterm",
             },
           },

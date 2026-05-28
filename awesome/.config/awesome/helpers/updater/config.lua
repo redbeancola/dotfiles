@@ -6,6 +6,7 @@ local M = {}
 
 -- Paths
 M.INPUT_FIFO   = "/tmp/pacman_input"
+M.PID_FILE     = "/tmp/pacman_wrapper.pid"
 M.WRAPPER_PATH = os.getenv("HOME") .. "/.config/awesome/helpers/updater/pacman_pty_wrapper.py"
 
 -- Popup geometry  (fall back to global overrides set in rc.lua)

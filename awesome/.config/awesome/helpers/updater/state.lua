@@ -1,8 +1,10 @@
--- helpers/updates/state.lua
+-- helpers/updater/state.lua
 -- Single shared-state table for the updater subsystem.
 -- All modules read/write through this table so there are no circular deps.
 
-local M = {
+-- Private backing store — keys never exist on M directly, so __newindex
+-- fires reliably on every write (including to pre-initialised fields).
+local _data = {
     -- Public (readable via awesome-client)
     count   = 0,    -- number of pending updates
     percent = 0,    -- current download progress (0-100)
@@ -22,22 +24,25 @@ local M = {
     popup                = nil,
 }
 
--- Legacy global aliases expected by external callers (awesome-client, widgets).
--- Writing to M.count etc. also updates the globals.
-local _mt = {
-    __newindex = function(t, k, v)
-        rawset(t, k, v)
+local M = {}
+
+setmetatable(M, {
+    __index = function(_, k)
+        return _data[k]
+    end,
+    __newindex = function(_, k, v)
+        _data[k] = v
+        -- Keep legacy globals in sync so awesome-client / widgets can read them.
         if     k == "count"   then update_count   = v
         elseif k == "percent" then update_percent = v
         elseif k == "running" then update_running = v
         end
     end,
-}
-setmetatable(M, _mt)
+})
 
 -- Initialise globals now so they exist from the start.
-update_count   = M.count
-update_percent = M.percent
-update_running = M.running
+update_count   = _data.count
+update_percent = _data.percent
+update_running = _data.running
 
 return M
