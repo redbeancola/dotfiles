@@ -24,11 +24,9 @@ local status = require("helpers.updater.status")
 
 local M = {}
 
--- ── Noise filter ──────────────────────────────────────────────────────────────
+-- Noise filter
 local NOISE_PATTERNS = {
-    "Failed to create wl_display",
-    "qt%.qpa%.plugin",
-    "ksshaskpass:",
+    -- "some messages to be filtered out",
 }
 
 local function is_noise(line)
@@ -39,7 +37,7 @@ local function is_noise(line)
     return false
 end
 
--- ── Output parsing ────────────────────────────────────────────────────────────
+-- Output parsing
 local function parse_stdout(line)
     local pkg = line:match("([%w%-_:%.]+%-x86_64)")
              or line:match("([%w%-_:%.]+%-any)")
@@ -69,7 +67,7 @@ local function parse_stdout(line)
     end
 end
 
--- ── Post-update recheck ───────────────────────────────────────────────────────
+-- Post-update recheck
 local function schedule_recheck()
     gears.timer.start_new(3, function()
         awful.spawn.easy_async_with_shell(
@@ -82,7 +80,7 @@ local function schedule_recheck()
     end)
 end
 
--- ── Process callbacks ─────────────────────────────────────────────────────────
+-- Process callbacks
 local function on_stdout(line)
     if is_noise(line) then return end
     parse_stdout(line)
@@ -141,7 +139,7 @@ local function on_exit(_, code)
     schedule_recheck()
 end
 
--- ── Public API ────────────────────────────────────────────────────────────────
+-- Public API
 
 function M.start()
     if state.running then return end

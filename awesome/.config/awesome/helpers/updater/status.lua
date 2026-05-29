@@ -1,6 +1,5 @@
 -- helpers/updater/status.lua
 -- Renders current state into the popup's status_text widget and
--- shows/hides the action-button containers.
 
 local gears    = require("gears")
 local beautiful = require("beautiful")

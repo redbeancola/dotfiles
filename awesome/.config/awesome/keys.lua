@@ -10,7 +10,7 @@ local hotkeys_popup  = require("awful.hotkeys_popup")
 awful.mouse.append_global_mousebindings({
   awful.button({}, 3, function()
     close_all_menus()
-    awful.spawn.with_shell("sh ~/.config/rofi/launchers/type-6/launcher.sh")
+    awful.spawn.with_shell("sh ~/.config/rofi/launcher.sh apps")
   end),
   awful.button({}, 1, function()
     close_all_menus()
@@ -62,11 +62,11 @@ awful.keyboard.append_global_keybindings({
   awful.key({ modkey, "Shift" }, "k", function() awful.client.swap.byidx(-1) end, { description = "swap with previous", group = "client" }),
 
   -- Launchers ----------------------------------------------------------------
-  awful.key({ modkey },           "a", function() awful.spawn.with_shell("sh ~/.config/rofi/launchers/type-6/launcher.sh")          end, { description = "rofi apps",      group = "launcher" }),
-  awful.key({ modkey },           "r", function() awful.spawn.with_shell("sh ~/.config/rofi/launchers/type-6/launcher2.sh")         end, { description = "rofi programs",  group = "launcher" }),
-  awful.key({ modkey },           "w", function() awful.spawn.with_shell("sh ~/.config/rofi/launchers/type-6/launcher1.sh")         end, { description = "rofi windows",   group = "launcher" }),
+  awful.key({ modkey },           "a", function() awful.spawn.with_shell("sh ~/.config/rofi/launcher.sh apps")          end, { description = "rofi apps",      group = "launcher" }),
+  awful.key({ modkey },           "r", function() awful.spawn.with_shell("sh ~/.config/rofi/launcher.sh run")         end, { description = "rofi programs",  group = "launcher" }),
+  awful.key({ modkey },           "w", function() awful.spawn.with_shell("sh ~/.config/rofi/launcher.sh window")         end, { description = "rofi windows",   group = "launcher" }),
   awful.key({ modkey },           "e", function() awful.spawn.with_shell("nemo")                                                    end, { description = "nemo",           group = "launcher" }),
-  awful.key({ modkey, "Shift" }, "q",  function() awful.spawn.with_shell("sh ~/.config/rofi/powermenu/type-6/powermenu.sh")         end, { description = "power options",  group = "awesome"  }),
+  awful.key({ modkey, "Shift" }, "q",  function() awful.spawn.with_shell("sh ~/.config/rofi/powermenu.sh")         end, { description = "power options",  group = "awesome"  }),
   awful.key({ modkey },           "c", function() cw.toggle()                                                                       end, { description = "calendar popup", group = "launcher" }),
   awful.key({ modkey, "Control"}, "v", function() awful.spawn.with_shell("copyq menu")                                             end, { description = "copyq menu",     group = "launcher" }),
   awful.key({ modkey, "Shift" }, "s",  function() awful.spawn.with_shell("flameshot gui")                                           end, { description = "flameshot",      group = "launcher" }),

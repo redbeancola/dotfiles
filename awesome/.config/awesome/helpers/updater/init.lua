@@ -1,7 +1,5 @@
 -- helpers/updater/init.lua
 -- Entry point: `require("helpers.updater")`.
--- Wires together config, state, runner, popup, the periodic timer,
--- and the lxpolkit/pkexec window-placement rule.
 
 local gears  = require("gears")
 local ruled  = require("ruled")
@@ -10,9 +8,9 @@ local cfg    = require("helpers.updater.config")
 local runner = require("helpers.updater.runner")
 
 -- Load popup last; it connects signals that runner emits.
-local popup  = require("helpers.updater.popup")  -- noqa: unused local (side-effects)
+local popup  = require("helpers.updater.popup")  
 
--- ── Periodic update check ─────────────────────────────────────────────────────
+-- Periodic update check 
 gears.timer {
     timeout   = cfg.check_interval,
     call_now  = true,
@@ -20,9 +18,9 @@ gears.timer {
     callback  = runner.check,
 }
 
--- ── lxpolkit window placement ─────────────────────────────────────────────────
+-- lxpolkit window placement
 -- Keeps the pkexec auth dialog at a fixed position.
--- If you prefer to manage rules centrally, move this block to rules.lua.
+-- you can move this block to whatever file you define your rules
 ruled.client.append_rule {
     id       = "lxpolkit_fixed",
     rule_any = { class = { "lxpolkit", "Lxpolkit" } },
@@ -38,7 +36,6 @@ ruled.client.append_rule {
     end,
 }
 
--- Return the popup module so callers can do:
---   local updater = require("helpers.updater")
---   updater.toggle()
+-- Return the module, global variables and methods can be
+-- called externally via awesome-client or required by other modules.
 return popup

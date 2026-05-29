@@ -1,6 +1,4 @@
 -- helpers/updater/popup.lua
--- Builds and manages the updater popup window and its interactive widgets.
--- Listens to awesome signals emitted by runner.lua to stay decoupled from it.
 
 local awful    = require("awful")
 local wibox    = require("wibox")
@@ -14,7 +12,7 @@ local runner = require("helpers.updater.runner")
 
 local M = {}
 
--- ── Y/n prompt buttons ────────────────────────────────────────────────────────
+-- Y/n prompt buttons 
 local function populate_yn_buttons()
     local container = state.prompt_btn_container
     if not container then return end
@@ -49,7 +47,7 @@ local function populate_yn_buttons()
     container.visible = true
 end
 
--- ── Signal handlers (from runner.lua) ─────────────────────────────────────────
+-- Signal handlers (from runner.lua)
 awesome.connect_signal("updater::prompt_needed", function()
     populate_yn_buttons()
 end)
@@ -60,7 +58,7 @@ awesome.connect_signal("updater::prompt_hide", function()
     end
 end)
 
--- ── Popup construction ────────────────────────────────────────────────────────
+-- Popup construction
 local function build_popup()
     -- Status text
     local st = wibox.widget {
@@ -167,7 +165,7 @@ local function build_popup()
     status.refresh()
 end
 
--- ── Public API ────────────────────────────────────────────────────────────────
+-- Public API
 
 --- Toggle the popup open/closed.
 function M.toggle()
