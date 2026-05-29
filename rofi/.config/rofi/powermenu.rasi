@@ -1,0 +1,119 @@
+/**
+ * Adapted from rofi-collection by Aditya Shakya (@adi1090x)
+ * https://github.com/adi1090x/rofi
+ **/
+
+/*****----- Global Properties -----*****/
+* {
+    font:            "ProductSans 11";
+    background:      #181825;
+    background-alt:  #1e1e2e;
+    foreground:      #FFFFFF;
+    selected:        #b4befe;
+    active:          #1e1e2e;
+    urgent:          #1e1e2e;
+}
+
+window {
+    transparency:        "real";
+    location:            center;
+    anchor:              center;
+    fullscreen:          false;
+    width:               760px;
+    border-radius:       15px;
+    border:              0px solid;
+    border-color:        @selected;
+    cursor:              "default";
+    background-color:    @background;
+}
+
+mainbox {
+    background-color:    transparent;
+    orientation:         horizontal;
+    children:            [ "imagebox", "listview" ];
+}
+
+imagebox {
+    spacing:             30px;
+    padding:             20px;
+    background-color:    transparent;
+    background-image:    url("~/.config/rofi/images/alena-aenami-portal-crop.png", height);
+    children:            [ "inputbar", "dummy", "message" ];
+}
+
+dummy { background-color: transparent; }
+
+inputbar {
+    padding:             15px;
+    border-radius:       10px;
+    background-color:    @urgent;
+    text-color:          @foreground;
+    children:            [ "prompt" ];
+}
+
+prompt {
+    background-color:    inherit;
+    text-color:          inherit;
+    horizontal-align:    0.5;
+    expand:              true;
+}
+
+message {
+    margin:              0px;
+    padding:             15px;
+    border-radius:       10px;
+    background-color:    @background;
+    text-color:          @foreground;
+}
+
+textbox {
+    background-color:    inherit;
+    text-color:          inherit;
+    vertical-align:      0.5;
+    horizontal-align:    0.5;
+}
+
+listview {
+    columns:             2;
+    lines:               3;
+    cycle:               true;
+    dynamic:             true;
+    scrollbar:           false;
+    layout:              vertical;
+    fixed-height:        true;
+    fixed-columns:       true;
+    spacing:             30px;
+    margin:              30px;
+    background-color:    transparent;
+    cursor:              "default";
+}
+
+element {
+    padding:             40px 10px;
+    border-radius:       10px;
+    background-color:    @background-alt;
+    text-color:          @foreground;
+    cursor:              pointer;
+}
+
+element-text {
+    font:                "feather bold 32";
+    background-color:    transparent;
+    text-color:          inherit;
+    cursor:              inherit;
+    vertical-align:      0.5;
+    horizontal-align:    0.5;
+}
+
+element selected.normal {
+    background-color:    @selected;
+    text-color:          @background;
+}
+
+element-icon {
+    size:                0px;
+}
+
+configuration {
+    show-icons: false;
+}
